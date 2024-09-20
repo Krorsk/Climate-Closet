@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personalized Weather-based Clothing Recommender</title>
+    <title>WeatherWearPlanner</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
@@ -65,37 +65,8 @@
         button:hover {
             background-color: #0056b3;
         }
-        #result, #multiDayForecast, #packingList {
+        #result, #weatherResult {
             margin-top: 30px;
-        }
-        .forecast-day {
-            background-color: #f8f9fa;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-        .recommendation-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .recommendation-item img {
-            width: 50px;
-            height: 50px;
-            margin-right: 15px;
-            object-fit: cover;
-        }
-        .advanced-options {
-            display: none;
-            padding: 15px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
-        .advanced-toggle {
-            color: var(--primary-color);
-            cursor: pointer;
-            text-decoration: underline;
         }
     </style>
 </head>
@@ -107,304 +78,83 @@
                 <label for="location">Location (City, Country)</label>
                 <input type="text" id="location" required placeholder="e.g., New York, USA">
             </div>
-            <div>
-                <label for="startDate">Start Date</label>
-                <input type="date" id="startDate" required>
-            </div>
-            <div>
-                <label for="endDate">End Date</label>
-                <input type="date" id="endDate" required>
-            </div>
-            <div>
-                <label for="gender">Gender</label>
-                <select id="gender" required>
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="non-binary">Non-binary</option>
-                    <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-            </div>
-            <div>
-                <label for="age">Age</label>
-                <input type="number" id="age" required min="1" max="120" placeholder="Your age">
-            </div>
-            <div>
-                <label for="tempComfort">Temperature Comfort</label>
-                <select id="tempComfort" required>
-                    <option value="">Select Comfort Level</option>
-                    <option value="cold">I usually feel cold</option>
-                    <option value="neutral">I'm usually comfortable</option>
-                    <option value="hot">I usually feel hot</option>
-                </select>
-            </div>
-            <div>
-                <label for="activityLevel">Activity Level</label>
-                <select id="activityLevel" required>
-                    <option value="low">Low (e.g., sightseeing)</option>
-                    <option value="medium">Medium (e.g., hiking)</option>
-                    <option value="high">High (e.g., sports)</option>
-                </select>
-            </div>
-            
-            <div class="advanced-toggle" onclick="toggleAdvancedOptions()">Advanced Options</div>
-            <div class="advanced-options" id="advancedOptions">
-                <div>
-                    <label for="preferredTemp">Preferred Temperature (°F)</label>
-                    <input type="number" id="preferredTemp" min="32" max="100" step="1" placeholder="e.g., 72">
-                </div>
-            </div>
-            
-            <button type="submit">Get Personalized Recommendations</button>
+            <button type="submit">Get Weather and Recommendations</button>
         </form>
-        
-        <div id="result"></div>
-        <div id="multiDayForecast"></div>
-        <div id="packingList"></div>
+
+        <div id="weatherResult"></div>
     </div>
 
     <script>
-        // Global variables
-        let geocodedLocation = null;
-
-        function toggleAdvancedOptions() {
-            const advancedOptions = document.getElementById('advancedOptions');
-            advancedOptions.style.display = advancedOptions.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // Event listener for form submission
-        document.getElementById('weatherForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const location = document.getElementById('location').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const activityLevel = document.getElementById('activityLevel').value;
-            const gender = document.getElementById('gender').value;
-            const age = parseInt(document.getElementById('age').value);
-            const tempComfort = document.getElementById('tempComfort').value;
-            const preferredTemp = document.getElementById('preferredTemp').value ? 
-                (parseFloat(document.getElementById('preferredTemp').value) - 32) * 5/9 : null;
-
-            try {
-                await getRecommendations(location, startDate, endDate, activityLevel, gender, age, tempComfort, preferredTemp);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
-            }
-        });
-
-        async function getRecommendations(location, startDate, endDate, activityLevel, gender, age, tempComfort, preferredTemp) {
-            try {
-                geocodedLocation = await geocodeLocation(location);
-                console.log('Geocoded location:', geocodedLocation);
-                
-                const weatherData = await getWeatherForecast(geocodedLocation, startDate, endDate);
-                console.log('Weather data:', weatherData);
-                
-                if (!weatherData || !weatherData.daily || !weatherData.daily.temperature_2m_max) {
-                    throw new Error('Invalid weather data received');
-                }
-                
-                displayMultiDayForecast(weatherData, startDate, endDate);
-                const recommendations = generateRecommendations(weatherData, activityLevel, gender, age, tempComfort, preferredTemp);
-                displayRecommendations(recommendations);
-                displayPackingList(recommendations);
-            } catch (error) {
-                console.error('Error in getRecommendations:', error);
-                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
-            }
-        }
-
         async function geocodeLocation(location) {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`);
-            const data = await response.json();
-            if (data.length === 0) throw new Error('Location not found');
-            return { lat: data[0].lat, lon: data[0].lon };
-        }
-
-        async function getWeatherForecast(location, startDate, endDate) {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&start_date=${startDate}&end_date=${endDate}`;
-            console.log('Weather API URL:', url);
-            const response = await fetch(url);
-            const data = await response.json();
-            console.log('Weather API response:', data);
-            return data;
-        }
-
-        function displayMultiDayForecast(weatherData, startDate, endDate) {
-            const forecastContainer = document.getElementById('multiDayForecast');
-            forecastContainer.innerHTML = '<h2>Weather Forecast</h2>';
-
-            const startDateTime = new Date(startDate);
-            const endDateTime = new Date(endDate);
-            const daysDiff = (endDateTime - startDateTime) / (1000 * 60 * 60 * 24) + 1;
-
-            for (let i = 0; i < daysDiff; i++) {
-                const date = new Date(startDateTime);
-                date.setDate(date.getDate() + i);
-                const dayData = {
-                    date: date.toISOString().split('T')[0],
-                    tempMax: weatherData.daily.temperature_2m_max[i],
-                    tempMin: weatherData.daily.temperature_2m_min[i],
-                    precipitation: weatherData.daily.precipitation_sum[i],
-                    weatherCode: weatherData.daily.weathercode[i]
-                };
-
-                const dayElement = document.createElement('div');
-                dayElement.className = 'forecast-day';
-                dayElement.innerHTML = `
-                    <h3>${dayData.date}</h3>
-                    <p>${getWeatherIcon(dayData.weatherCode)}</p>
-                    <p>High: ${dayData.tempMax}°C (${(dayData.tempMax * 9/5 + 32).toFixed(1)}°F)</p>
-                    <p>Low: ${dayData.tempMin}°C (${(dayData.tempMin * 9/5 + 32).toFixed(1)}°F)</p>
-                    <p>Precip: ${dayData.precipitation}mm</p>
-                `;
-                forecastContainer.appendChild(dayElement);
-            }
-        }
-
-        function getWeatherIcon(weatherCode) {
-            const iconMap = {
-                0: '<i class="fas fa-sun" title="Clear sky"></i>',
-                1: '<i class="fas fa-cloud-sun" title="Mainly clear"></i>',
-                2: '<i class="fas fa-cloud" title="Partly cloudy"></i>',
-                3: '<i class="fas fa-cloud" title="Overcast"></i>',
-                45: '<i class="fas fa-smog" title="Fog"></i>',
-                48: '<i class="fas fa-smog" title="Depositing rime fog"></i>',
-                51: '<i class="fas fa-cloud-rain" title="Light drizzle"></i>',
-                53: '<i class="fas fa-cloud-rain" title="Moderate drizzle"></i>',
-                55: '<i class="fas fa-cloud-showers-heavy" title="Dense drizzle"></i>',
-                61: '<i class="fas fa-cloud-rain" title="Slight rain"></i>',
-                63: '<i class="fas fa-cloud-showers-heavy" title="Moderate rain"></i>',
-                65: '<i class="fas fa-cloud-showers-heavy" title="Heavy rain"></i>',
-                71: '<i class="far fa-snowflake" title="Slight snow fall"></i>',
-                73: '<i class="fas fa-snowflake" title="Moderate snow fall"></i>',
-                75: '<i class="fas fa-snowflake" title="Heavy snow fall"></i>',
-                95: '<i class="fas fa-bolt" title="Thunderstorm"></i>',
-            };
-            return iconMap[weatherCode] || '<i class="fas fa-question" title="Unknown"></i>';
-        }
-
-        function generateRecommendations(weatherData, activityLevel, gender, age, tempComfort, preferredTemp) {
-            const avgTemp = (weatherData.daily.temperature_2m_max[0] + weatherData.daily.temperature_2m_min[0]) / 2;
-            const recommendations = {
-                clothing: [],
-                accessories: [],
-            };
-
-            let coldThreshold, warmThreshold;
-            if (preferredTemp) {
-                coldThreshold = preferredTemp - 5;
-                warmThreshold = preferredTemp + 5;
-            } else {
-                switch (tempComfort) {
-                    case 'cold':
-                        coldThreshold = 18;
-                        warmThreshold = 25;
-                        break;
-                    case 'hot':
-                        coldThreshold = 10;
-                        warmThreshold = 20;
-                        break;
-                    default: // neutral
-                        coldThreshold = 15;
-                        warmThreshold = 22;
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Your API key
+            const url = `http://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    const lat = data[0].lat;
+                    const lon = data[0].lon;
+                    getWeather(lat, lon);
+                } else {
+                    alert('Location not found');
                 }
+            } catch (error) {
+                console.error('Error fetching geocode data:', error);
+                alert('Failed to retrieve location data');
             }
-
-            if (avgTemp < coldThreshold) {
-                recommendations.clothing.push(
-                    { item: 'Heavy jacket', description: 'A warm, insulated coat like a down jacket or wool peacoat', image: 'https://via.placeholder.com/50?text=Jacket' },
-                    { item: 'Sweater', description: 'A thick, wool or fleece sweater for layering', image: 'https://via.placeholder.com/50?text=Sweater' },
-                    { item: 'Thermal underwear', description: 'Moisture-wicking base layer for extra warmth', image: 'https://via.placeholder.com/50?text=Thermal' },
-                    { item: 'Warm pants', description: 'Thick, insulated pants or jeans', image: 'https://via.placeholder.com/50?text=Pants' }
-                );
-                recommendations.accessories.push(
-                    { item: 'Warm hat', description: 'A knit beanie or wool cap to keep your head warm', image: 'https://via.placeholder.com/50?text=Hat' },
-                    { item: 'Gloves', description: 'Insulated gloves or mittens to protect your hands', image: 'https://via.placeholder.com/50?text=Gloves' },
-                    { item: 'Scarf', description: 'A thick, wool or cashmere scarf for neck protection', image: 'https://via.placeholder.com/50?text=Scarf' }
-                );
-            } else if (avgTemp < warmThreshold) {
-                recommendations.clothing.push(
-                    { item: 'Light jacket', description: 'A versatile jacket like a water-resistant windbreaker or light trench coat', image: 'https://via.placeholder.com/50?text=Jacket' },
-                    { item: 'Long-sleeved shirt', description: 'A comfortable cotton or blend long-sleeved shirt for layering', image: 'https://via.placeholder.com/50?text=Shirt' },
-                    { item: 'Pants', description: 'Medium-weight, comfortable pants or jeans', image: 'https://via.placeholder.com/50?text=Pants' }
-                );
-                recommendations.accessories.push(
-                    { item: 'Light scarf', description: 'A lightweight scarf for style and mild weather protection', image: 'https://via.placeholder.com/50?text=Scarf' }
-                );
-            } else {
-                recommendations.clothing.push(
-                    { item: 'T-shirt', description: 'Breathable, cotton t-shirts for warm weather', image: 'https://via.placeholder.com/50?text=Tshirt' },
-                    { item: 'Shorts', description: 'Lightweight, comfortable shorts for hot days', image: 'https://via.placeholder.com/50?text=Shorts' },
-                    { item: 'Light pants', description: 'Breathable, light-colored pants for cooler evenings', image: 'https://via.placeholder.com/50?text=Pants' }
-                );
-                recommendations.accessories.push(
-                    { item: 'Sunglasses', description: 'UV-protective sunglasses to shield your eyes', image: 'https://via.placeholder.com/50?text=Sunglasses' },
-                    { item: 'Sun hat', description: 'A wide-brimmed hat or cap for sun protection', image: 'https://via.placeholder.com/50?text=Hat' }
-                );
-            }
-
-            if (gender === 'female') {
-                recommendations.clothing.push({ item: 'Dress or skirt', description: 'A versatile dress or skirt suitable for the weather', image: 'https://via.placeholder.com/50?text=Dress' });
-            }
-
-            if (age > 60) {
-                recommendations.accessories.push({ item: 'Comfortable shoes', description: 'Supportive, comfortable shoes for extended wear', image: 'https://via.placeholder.com/50?text=Shoes' });
-            }
-
-            if (activityLevel === 'high') {
-                recommendations.clothing.push({ item: 'Moisture-wicking sportswear', description: 'Quick-drying, breathable athletic shirts and shorts', image: 'https://via.placeholder.com/50?text=Sport' });
-                recommendations.accessories.push(
-                    { item: 'Water bottle', description: 'A reusable water bottle to stay hydrated during activities', image: 'https://via.placeholder.com/50?text=Bottle' },
-                    { item: 'Towel', description: 'A quick-drying microfiber towel for post-activity freshening up', image: 'https://via.placeholder.com/50?text=Towel' }
-                );
-            }
-
-            return recommendations;
         }
 
-        function displayRecommendations(recommendations) {
-            const resultContainer = document.getElementById('result');
-            resultContainer.innerHTML = `
-                <h2>Clothing Recommendations</h2>
-                <h3>Clothing:</h3>
-                <div>${recommendations.clothing.map(item => `
-                    <div class="recommendation-item">
-                        <img src="${item.image}" alt="${item.item}">
-                        <div>
-                            <strong>${item.item}:</strong> ${item.description}
-                        </div>
-                    </div>`).join('')}
-                </div>
-                <h3>Accessories:</h3>
-                <div>${recommendations.accessories.map(item => `
-                    <div class="recommendation-item">
-                        <img src="${item.image}" alt="${item.item}">
-                        <div>
-                            <strong>${item.item}:</strong> ${item.description}
-                        </div>
-                    </div>`).join('')}
-                </div>
+        async function getWeather(lat, lon) {
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Your API key
+            const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data) {
+                    displayWeather(data);
+                } else {
+                    alert('Weather data not found');
+                }
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                alert('Failed to retrieve weather data');
+            }
+        }
+
+        function displayWeather(data) {
+            const weatherContainer = document.getElementById('weatherResult');
+            const current = data.current;
+            const daily = data.daily;
+
+            let weatherHTML = `
+                <h2>Weather in ${data.timezone}</h2>
+                <p>Current Temperature: ${current.temp}°C</p>
+                <p>Weather: ${current.weather[0].description}</p>
+                <p>Humidity: ${current.humidity}%</p>
+                <h3>8-Day Forecast:</h3>
+                <ul>
             `;
+
+            daily.forEach(day => {
+                const date = new Date(day.dt * 1000).toLocaleDateString();
+                weatherHTML += `
+                    <li>${date} - Temp: ${day.temp.day}°C - Weather: ${day.weather[0].description}</li>
+                `;
+            });
+
+            weatherHTML += '</ul>';
+            weatherContainer.innerHTML = weatherHTML;
         }
 
-        function displayPackingList(recommendations) {
-            const packingListContainer = document.getElementById('packingList');
-            const packingList = [...recommendations.clothing, ...recommendations.accessories];
-            packingListContainer.innerHTML = `
-                <h2>Packing List</h2>
-                <ul>${packingList.map(item => `
-                    <li class="recommendation-item">
-                        <input type="checkbox" id="${item.item.replace(/\s+/g, '')}">
-                        <label for="${item.item.replace(/\s+/g, '')}">
-                            <img src="${item.image}" alt="${item.item}">
-                            <strong>${item.item}:</strong> ${item.description}
-                        </label>
-                    </li>`).join('')}
-                </ul>
-            `;
-        }
+        document.getElementById('weatherForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const location = document.getElementById('location').value;
+            geocodeLocation(location);
+        });
     </script>
 </body>
 </html>
