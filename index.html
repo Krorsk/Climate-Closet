@@ -1,81 +1,164 @@
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // The form submission event listener
-        document.getElementById('weatherForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const location = document.getElementById('location').value;
-            geocodeLocation(location);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeatherWearPlanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007AFF;
+            --background-color: #F5F5F7;
+            --text-color: #1D1D1F;
+            --border-color: #D2D2D7;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+        }
+        form {
+            display: grid;
+            gap: 15px;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: block;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result, #weatherResult {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Personalized Weather-based Clothing Recommender</h1>
+        <form id="weatherForm">
+            <div>
+                <label for="location">Location (City, Country)</label>
+                <input type="text" id="location" required placeholder="e.g., New York, USA">
+            </div>
+            <button type="submit">Get Weather and Recommendations</button>
+        </form>
+
+        <div id="weatherResult"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('weatherForm');
+            
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    const location = document.getElementById('location').value;
+                    geocodeLocation(location);
+                });
+            }
         });
-    });
 
-    async function geocodeLocation(location) {
-        const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Your API key
-        const url = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
+        async function geocodeLocation(location) {
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
+            const url = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
 
-        try {
-            console.log("Fetching geocode data for location:", location);
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            console.log("Geocode API response:", data);
-            
-            if (data.length > 0) {
-                const lat = data[0].lat;
-                const lon = data[0].lon;
-                getWeather(lat, lon);
-            } else {
-                alert('Location not found');
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.length > 0) {
+                    const lat = data[0].lat;
+                    const lon = data[0].lon;
+                    getWeather(lat, lon);
+                } else {
+                    alert('Location not found');
+                }
+            } catch (error) {
+                console.error('Error fetching geocode data:', error);
+                alert('Failed to retrieve location data');
             }
-        } catch (error) {
-            console.error('Error fetching geocode data:', error);
-            alert('Failed to retrieve location data');
         }
-    }
 
-    async function getWeather(lat, lon) {
-        const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Your API key
-        const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
-        
-        try {
-            console.log("Fetching weather data for coordinates:", lat, lon);
-            const response = await fetch(url);
-            const data = await response.json();
-
-            console.log("Weather API response:", data);
+        async function getWeather(lat, lon) {
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
+            const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
             
-            if (data) {
-                displayWeather(data);
-            } else {
-                alert('Weather data not found');
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data) {
+                    displayWeather(data);
+                } else {
+                    alert('Weather data not found');
+                }
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                alert('Failed to retrieve weather data');
             }
-        } catch (error) {
-            console.error('Error fetching weather data:', error);
-            alert('Failed to retrieve weather data');
         }
-    }
 
-    function displayWeather(data) {
-        const weatherContainer = document.getElementById('weatherResult');
-        const current = data.current;
-        const daily = data.daily;
+        function displayWeather(data) {
+            const weatherContainer = document.getElementById('weatherResult');
+            const current = data.current;
+            const daily = data.daily;
 
-        let weatherHTML = `
-            <h2>Weather in ${data.timezone}</h2>
-            <p>Current Temperature: ${current.temp}°C</p>
-            <p>Weather: ${current.weather[0].description}</p>
-            <p>Humidity: ${current.humidity}%</p>
-            <h3>8-Day Forecast:</h3>
-            <ul>
-        `;
-
-        daily.forEach(day => {
-            const date = new Date(day.dt * 1000).toLocaleDateString();
-            weatherHTML += `
-                <li>${date} - Temp: ${day.temp.day}°C - Weather: ${day.weather[0].description}</li>
+            let weatherHTML = `
+                <h2>Weather in ${data.timezone}</h2>
+                <p>Current Temperature: ${current.temp}°C</p>
+                <p>Weather: ${current.weather[0].description}</p>
+                <p>Humidity: ${current.humidity}%</p>
+                <h3>8-Day Forecast:</h3>
+                <ul>
             `;
-        });
 
-        weatherHTML += '</ul>';
-        weatherContainer.innerHTML = weatherHTML;
-    }
-</script>
+            daily.forEach(day => {
+                const date = new Date(day.dt * 1000).toLocaleDateString();
+                weatherHTML += `
+                    <li>${date} - Temp: ${day.temp.day}°C - Weather: ${day.weather[0].description}</li>
+                `;
+            });
+
+            weatherHTML += '</ul>';
+            weatherContainer.innerHTML = weatherHTML;
+        }
+    </script>
+</body>
+</html>
