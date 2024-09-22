@@ -82,11 +82,12 @@
         
         <!-- Authentication buttons -->
         <div class="auth-buttons">
-            <button id="login" style="display: none;">Login</button>
+            <button id="login">Login</button>
             <button id="logout" style="display: none;">Logout</button>
         </div>
 
-        <form id="weatherForm" style="display:none;">
+        <!-- Weather form -->
+        <form id="weatherForm">
             <div>
                 <label for="location">Location (City, Country)</label>
                 <input type="text" id="location" required placeholder="e.g., New York, USA">
@@ -111,16 +112,14 @@
             // Check if the user is authenticated
             const isAuthenticated = await auth0.isAuthenticated();
 
-            // Update the UI based on authentication status
+            // UI Elements
             const loginButton = document.getElementById('login');
             const logoutButton = document.getElementById('logout');
-            const weatherForm = document.getElementById('weatherForm');
 
             if (isAuthenticated) {
                 // If the user is authenticated
                 loginButton.style.display = 'none';
                 logoutButton.style.display = 'block';
-                weatherForm.style.display = 'block';
 
                 logoutButton.addEventListener('click', async () => {
                     await auth0.logout({
@@ -132,7 +131,6 @@
                 // If the user is not authenticated
                 loginButton.style.display = 'block';
                 logoutButton.style.display = 'none';
-                weatherForm.style.display = 'none';
 
                 loginButton.addEventListener('click', async () => {
                     await auth0.loginWithRedirect();
@@ -149,6 +147,77 @@
 
         // Initialize the Auth0 client when the page loads
         window.onload = initAuth0;
-    </script>
-</body>
-</html>
+
+        // Weather API code (same as before)
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('weatherForm');
+            
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    const location = document.getElementById('location').value;
+                    geocodeLocation(location);
+                });
+            }
+        });
+
+        async function geocodeLocation(location) {
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
+            const url = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.length > 0) {
+                    const lat = data[0].lat;
+                    const lon = data[0].lon;
+                    getWeather(lat, lon);
+                } else {
+                    alert('Location not found');
+                }
+            } catch (error) {
+                console.error('Error fetching geocode data:', error);
+                alert('Failed to retrieve location data');
+            }
+        }
+
+        async function getWeather(lat, lon) {
+            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
+            const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data) {
+                    displayWeather(data);
+                } else {
+                    alert('Weather data not found');
+                }
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                alert('Failed to retrieve weather data');
+            }
+        }
+
+        function displayWeather(data) {
+            const weatherContainer = document.getElementById('weatherResult');
+            const current = data.current;
+            const daily = data.daily;
+
+            let weatherHTML = `
+                <h2>Weather in ${data.timezone}</h2>
+                <p>Current Temperature: ${current.temp}°C</p>
+                <p>Weather: ${current.weather[0].description}</p>
+                <p>Humidity: ${current.humidity}%</p>
+                <h3>8-Day Forecast:</h3>
+                <ul>
+            `;
+
+            daily.forEach(day => {
+                const date = new Date(day.dt * 1000).toLocaleDateString();
+                weatherHTML += `
+                    <li>${date} - Temp: ${day
+        weatherHTML += '</ul>';
+        weatherContainer.innerHTML = weatherHTML;
+    }
+</script>
