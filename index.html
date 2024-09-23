@@ -114,6 +114,22 @@
 
     <!-- JS SDK and custom script -->
     <script>
+        // Save user preferences in local storage
+        function saveUserPreferences(gender, activity, age) {
+            localStorage.setItem('gender', gender);
+            localStorage.setItem('activity', activity);
+            localStorage.setItem('age', age);
+        }
+
+        // Load user preferences from local storage
+        function loadUserPreferences() {
+            const gender = localStorage.getItem('gender');
+            const activity = localStorage.getItem('activity');
+            const age = localStorage.getItem('age');
+            
+            return { gender, activity, age };
+        }
+
         // Initialize weather and clothing recommendation functionality
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('weatherForm');
@@ -125,8 +141,19 @@
                     const gender = document.getElementById('gender').value;
                     const activity = document.getElementById('activity').value;
                     const age = document.getElementById('age').value;
+
+                    // Save preferences in local storage
+                    saveUserPreferences(gender, activity, age);
+
+                    // Fetch weather data and make recommendations
                     geocodeLocation(location, gender, activity, age);
                 });
+            }
+
+            // Load previous user preferences if they exist
+            const previousPreferences = loadUserPreferences();
+            if (previousPreferences.gender && previousPreferences.activity) {
+                alert(`Welcome back! We remember your preferences: ${previousPreferences.gender}, ${previousPreferences.activity}`);
             }
         });
 
@@ -189,7 +216,7 @@
                 const date = new Date(day.dt * 1000).toLocaleDateString();
                 const temp = day.temp.day;
                 const weatherDesc = day.weather[0].description;
-                const clothingRec = getClothingRecommendation(temp, weatherDesc, gender, activity, age);
+                const clothingRec = getAIClothingRecommendation(temp, weatherDesc, gender, activity, age);
                 weatherHTML += `
                     <li>${date} - Temp: ${temp}°C - Weather: ${weatherDesc} - Clothing: ${clothingRec}</li>
                 `;
@@ -199,8 +226,8 @@
             weatherContainer.innerHTML = weatherHTML;
         }
 
-        // Generate clothing recommendations based on temperature, weather, gender, activity, and age
-        function getClothingRecommendation(temp, weatherDesc, gender, activity, age) {
+        // AI logic for clothing recommendations based on user preferences and past data
+        function getAIClothingRecommendation(temp, weatherDesc, gender, activity, age) {
             let clothingRec = [];
 
             // Base recommendations on temperature
@@ -211,7 +238,7 @@
                 }
             } else if (temp > 15 && temp <= 25) {
                 clothingRec.push("Jeans, T-shirt");
-                if (activity === "formal") {
+                                if (activity === "formal") {
                     clothingRec.push("Light Blazer");
                 }
             } else if (temp <= 15) {
@@ -226,11 +253,12 @@
                 clothingRec.push("Raincoat, Waterproof Shoes, Umbrella");
             }
 
-            // Age-based adjustments (optional logic)
-            if (age && age < 12) {
-                clothingRec.push("Kid-friendly options like warm hats");
-            } else if (age && age > 60) {
-                clothingRec.push("Comfortable shoes, layered clothing");
+            // AI adjustment: check user’s previous clothing preferences
+            const pastGender = localStorage.getItem('gender');
+            const pastActivity = localStorage.getItem('activity');
+
+            if (pastGender && pastActivity) {
+                clothingRec.push(`Based on your past preferences for ${pastActivity} and ${pastGender}, we suggest additional accessories.`);
             }
 
             return clothingRec.join(", ");
@@ -238,3 +266,4 @@
     </script>
 </body>
 </html>
+
