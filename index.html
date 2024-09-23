@@ -199,25 +199,32 @@
             }
         }
 
-        function displayWeather(data) {
-            const weatherContainer = document.getElementById('weatherResult');
-            const current = data.current;
-            const daily = data.daily;
+function displayWeather(data) {
+    const weatherContainer = document.getElementById('weatherResult');
+    const current = data.current;
+    const daily = data.daily;
 
-            let weatherHTML = `
-                <h2>Weather in ${data.timezone}</h2>
-                <p>Current Temperature: ${current.temp}°C</p>
-                <p>Weather: ${current.weather[0].description}</p>
-                <p>Humidity: ${current.humidity}%</p>
-                <h3>8-Day Forecast:</h3>
-                <ul>
-            `;
+    let weatherHTML = `
+        <h2>Weather in ${data.timezone}</h2>
+        <p>Current Temperature: ${current.temp}°C</p>
+        <p>Weather: ${current.weather[0].description}</p>
+        <p>Humidity: ${current.humidity}%</p>
+        <h3>8-Day Forecast:</h3>
+        <ul>
+    `;
 
-            daily.forEach(day => {
-                const date = new Date(day.dt * 1000).toLocaleDateString();
-                weatherHTML += `
-                    <li>${date} - Temp: ${day
-        weatherHTML += '</ul>';
-        weatherContainer.innerHTML = weatherHTML;
-    }
+    daily.forEach(day => {
+        const date = new Date(day.dt * 1000).toLocaleDateString();
+        weatherHTML += `
+            <li>${date} - Temp: ${day.temp.day}°C - Weather: ${day.weather[0].description}</li>
+        `;
+    });
+
+    // Close the ul tag
+    weatherHTML += '</ul>';
+    
+    // Display the constructed HTML
+    weatherContainer.innerHTML = weatherHTML;
+}
+
 </script>
