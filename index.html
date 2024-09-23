@@ -80,11 +80,31 @@
     <div class="container">
         <h1>Personalized Weather-based Clothing Recommender</h1>
         
-        <!-- Weather form -->
+        <!-- Weather form with additional inputs for gender, activity, and age -->
         <form id="weatherForm">
             <div>
                 <label for="location">Location (City, Country)</label>
                 <input type="text" id="location" required placeholder="e.g., New York, USA">
+            </div>
+            <div>
+                <label for="gender">Gender</label>
+                <select id="gender">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label for="activity">Activity Type</label>
+                <select id="activity">
+                    <option value="casual">Casual</option>
+                    <option value="formal">Formal</option>
+                    <option value="outdoor">Outdoor Activities</option>
+                </select>
+            </div>
+            <div>
+                <label for="age">Age (Optional)</label>
+                <input type="number" id="age" min="0" placeholder="e.g., 30">
             </div>
             <button type="submit">Get Weather and Recommendations</button>
         </form>
@@ -92,9 +112,7 @@
         <div id="weatherResult"></div>
     </div>
 
-    <!-- Auth0 JS SDK -->
-    <script src="https://cdn.auth0.com/js/auth0-spa-js/1.18/auth0-spa-js.production.js"></script>
-
+    <!-- JS SDK and custom script -->
     <script>
         // Initialize weather and clothing recommendation functionality
         document.addEventListener('DOMContentLoaded', function() {
@@ -104,13 +122,16 @@
                 form.addEventListener('submit', function(event) {
                     event.preventDefault();
                     const location = document.getElementById('location').value;
-                    geocodeLocation(location);
+                    const gender = document.getElementById('gender').value;
+                    const activity = document.getElementById('activity').value;
+                    const age = document.getElementById('age').value;
+                    geocodeLocation(location, gender, activity, age);
                 });
             }
         });
 
         // Geocode the user's inputted location
-        async function geocodeLocation(location) {
+        async function geocodeLocation(location, gender, activity, age) {
             const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
             const url = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
 
@@ -120,7 +141,7 @@
                 if (data.length > 0) {
                     const lat = data[0].lat;
                     const lon = data[0].lon;
-                    getWeather(lat, lon);
+                    getWeather(lat, lon, gender, activity, age);
                 } else {
                     alert('Location not found');
                 }
@@ -131,7 +152,7 @@
         }
 
         // Get weather data from the API
-        async function getWeather(lat, lon) {
+        async function getWeather(lat, lon, gender, activity, age) {
             const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
             const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
             
@@ -139,7 +160,7 @@
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data) {
-                    displayWeather(data);
+                    displayWeather(data, gender, activity, age);
                 } else {
                     alert('Weather data not found');
                 }
@@ -150,7 +171,7 @@
         }
 
         // Display weather data and clothing recommendations
-        function displayWeather(data) {
+        function displayWeather(data, gender, activity, age) {
             const weatherContainer = document.getElementById('weatherResult');
             const current = data.current;
             const daily = data.daily;
@@ -168,7 +189,7 @@
                 const date = new Date(day.dt * 1000).toLocaleDateString();
                 const temp = day.temp.day;
                 const weatherDesc = day.weather[0].description;
-                const clothingRec = getClothingRecommendation(temp, weatherDesc);
+                const clothingRec = getClothingRecommendation(temp, weatherDesc, gender, activity, age);
                 weatherHTML += `
                     <li>${date} - Temp: ${temp}°C - Weather: ${weatherDesc} - Clothing: ${clothingRec}</li>
                 `;
@@ -178,20 +199,41 @@
             weatherContainer.innerHTML = weatherHTML;
         }
 
-        // Generate clothing recommendations based on temperature and weather
-        function getClothingRecommendation(temp, weatherDesc) {
+        // Generate clothing recommendations based on temperature, weather, gender, activity, and age
+        function getClothingRecommendation(temp, weatherDesc, gender, activity, age) {
+            let clothingRec = [];
+
+            // Base recommendations on temperature
             if (temp > 25) {
-                return "Shorts, T-shirts, Sunglasses";
+                clothingRec.push("Shorts, T-shirts");
+                if (gender === "female") {
+                    clothingRec.push("Sundress");
+                }
             } else if (temp > 15 && temp <= 25) {
-                return "Jeans, T-shirt, Light Jacket";
+                clothingRec.push("Jeans, T-shirt");
+                if (activity === "formal") {
+                    clothingRec.push("Light Blazer");
+                }
             } else if (temp <= 15) {
-                return "Jacket, Scarf, Gloves";
+                clothingRec.push("Jacket, Scarf");
+                if (activity === "outdoor") {
+                    clothingRec.push("Thermal Clothing");
+                }
             }
 
+            // Adjust for weather conditions
             if (weatherDesc.includes("rain")) {
-                return "Raincoat, Waterproof Shoes, Umbrella";
+                clothingRec.push("Raincoat, Waterproof Shoes, Umbrella");
             }
-            return "Regular clothing";
+
+            // Age-based adjustments (optional logic)
+            if (age && age < 12) {
+                clothingRec.push("Kid-friendly options like warm hats");
+            } else if (age && age > 60) {
+                clothingRec.push("Comfortable shoes, layered clothing");
+            }
+
+            return clothingRec.join(", ");
         }
     </script>
 </body>
