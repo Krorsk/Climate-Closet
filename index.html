@@ -79,7 +79,7 @@
 <body>
     <div class="container">
         <h1>Personalized Weather-based Clothing Recommender</h1>
-        
+
         <!-- Weather form with additional inputs for gender, activity, and age -->
         <form id="weatherForm">
             <div>
@@ -112,8 +112,87 @@
         <div id="weatherResult"></div>
     </div>
 
+    <!-- Add TensorFlow.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
     <!-- JS SDK and custom script -->
     <script>
+        // Load TensorFlow.js Model
+        async function loadModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.dense({inputShape: [4], units: 16, activation: 'relu'}));
+            model.add(tf.layers.dense({units: 16, activation: 'relu'}));
+            model.add(tf.layers.dense({units: 3, activation: 'softmax'}));
+
+            model.compile({
+                optimizer: 'adam',
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            return model;
+        }
+
+        // Sample Training Data (you can replace with more real-world data later)
+        const trainingData = tf.tensor2d([
+            [30, 1, 0, 25],  // hot, female, casual, age 25
+            [5, 0, 1, 40],   // cold, male, outdoor, age 40
+            [18, 1, 0, 30],  // mild, female, casual, age 30
+        ]);
+
+        // Labels (corresponding to hot, cold, rainy weather)
+        const outputData = tf.tensor2d([
+            [1, 0, 0],  // hot
+            [0, 1, 0],  // cold
+            [0, 0, 1],  // rainy
+        ]);
+
+        // Train the model
+        async function trainModel(model) {
+            await model.fit(trainingData, outputData, {
+                epochs: 10,
+                shuffle: true
+            });
+            console.log('Model trained!');
+        }
+
+        // Make predictions using the AI model
+        async function makePrediction(model, weatherData) {
+            const inputData = tf.tensor2d([weatherData]);
+            const prediction = model.predict(inputData);
+            const predictedIndex = prediction.argMax(1).dataSync()[0];  // Get the predicted index
+
+            // Map prediction to clothing recommendation
+            const recommendations = ['Light Clothing', 'Heavy Jacket', 'Raincoat'];
+            return recommendations[predictedIndex];
+        }
+
+        // Initialize the weather and clothing recommendation functionality
+        document.addEventListener('DOMContentLoaded', async function() {
+            const form = document.getElementById('weatherForm');
+
+            // Load and train the AI model
+            const model = await loadModel();
+            await trainModel(model);
+
+            if (form) {
+                form.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    const location = document.getElementById('location').value;
+                    const gender = document.getElementById('gender').value;
+                    const activity = document.getElementById('activity').value;
+                    const age = document.getElementById('age').value;
+
+                    // Get the weather data (you can use the OpenWeather API)
+                    const weatherData = [25, gender === 'female' ? 1 : 0, activity === 'outdoor' ? 1 : 0, age];  // Example data
+
+                    // Use AI model to make clothing recommendation
+                    const recommendation = await makePrediction(model, weatherData);
+                    alert(`AI Clothing Recommendation: ${recommendation}`);
+                });
+            }
+        });
+
         // Save user preferences in local storage
         function saveUserPreferences(gender, activity, age) {
             localStorage.setItem('gender', gender);
@@ -129,141 +208,6 @@
             
             return { gender, activity, age };
         }
-
-        // Initialize weather and clothing recommendation functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('weatherForm');
-            
-            if (form) {
-                form.addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    const location = document.getElementById('location').value;
-                    const gender = document.getElementById('gender').value;
-                    const activity = document.getElementById('activity').value;
-                    const age = document.getElementById('age').value;
-
-                    // Save preferences in local storage
-                    saveUserPreferences(gender, activity, age);
-
-                    // Fetch weather data and make recommendations
-                    geocodeLocation(location, gender, activity, age);
-                });
-            }
-
-            // Load previous user preferences if they exist
-            const previousPreferences = loadUserPreferences();
-            if (previousPreferences.gender && previousPreferences.activity) {
-                alert(`Welcome back! We remember your preferences: ${previousPreferences.gender}, ${previousPreferences.activity}`);
-            }
-        });
-
-        // Geocode the user's inputted location
-        async function geocodeLocation(location, gender, activity, age) {
-            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
-            const url = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.length > 0) {
-                    const lat = data[0].lat;
-                    const lon = data[0].lon;
-                    getWeather(lat, lon, gender, activity, age);
-                } else {
-                    alert('Location not found');
-                }
-            } catch (error) {
-                console.error('Error fetching geocode data:', error);
-                alert('Failed to retrieve location data');
-            }
-        }
-
-        // Get weather data from the API
-        async function getWeather(lat, lon, gender, activity, age) {
-            const apiKey = 'cc7e42aa1959905e0f7ba900ebe10566';  // Replace with your actual API key
-            const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${apiKey}`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data) {
-                    displayWeather(data, gender, activity, age);
-                } else {
-                    alert('Weather data not found');
-                }
-            } catch (error) {
-                console.error('Error fetching weather data:', error);
-                alert('Failed to retrieve weather data');
-            }
-        }
-
-        // Display weather data and clothing recommendations
-        function displayWeather(data, gender, activity, age) {
-            const weatherContainer = document.getElementById('weatherResult');
-            const current = data.current;
-            const daily = data.daily;
-
-            let weatherHTML = `
-                <h2>Weather in ${data.timezone}</h2>
-                <p>Current Temperature: ${current.temp}°C</p>
-                <p>Weather: ${current.weather[0].description}</p>
-                <p>Humidity: ${current.humidity}%</p>
-                <h3>8-Day Forecast:</h3>
-                <ul>
-            `;
-
-            daily.forEach(day => {
-                const date = new Date(day.dt * 1000).toLocaleDateString();
-                const temp = day.temp.day;
-                const weatherDesc = day.weather[0].description;
-                const clothingRec = getAIClothingRecommendation(temp, weatherDesc, gender, activity, age);
-                weatherHTML += `
-                    <li>${date} - Temp: ${temp}°C - Weather: ${weatherDesc} - Clothing: ${clothingRec}</li>
-                `;
-            });
-
-            weatherHTML += '</ul>';
-            weatherContainer.innerHTML = weatherHTML;
-        }
-
-        // AI logic for clothing recommendations based on user preferences and past data
-        function getAIClothingRecommendation(temp, weatherDesc, gender, activity, age) {
-            let clothingRec = [];
-
-            // Base recommendations on temperature
-            if (temp > 25) {
-                clothingRec.push("Shorts, T-shirts");
-                if (gender === "female") {
-                    clothingRec.push("Sundress");
-                }
-            } else if (temp > 15 && temp <= 25) {
-                clothingRec.push("Jeans, T-shirt");
-                                if (activity === "formal") {
-                    clothingRec.push("Light Blazer");
-                }
-            } else if (temp <= 15) {
-                clothingRec.push("Jacket, Scarf");
-                if (activity === "outdoor") {
-                    clothingRec.push("Thermal Clothing");
-                }
-            }
-
-            // Adjust for weather conditions
-            if (weatherDesc.includes("rain")) {
-                clothingRec.push("Raincoat, Waterproof Shoes, Umbrella");
-            }
-
-            // AI adjustment: check user’s previous clothing preferences
-            const pastGender = localStorage.getItem('gender');
-            const pastActivity = localStorage.getItem('activity');
-
-            if (pastGender && pastActivity) {
-                clothingRec.push(`Based on your past preferences for ${pastActivity} and ${pastGender}, we suggest additional accessories.`);
-            }
-
-            return clothingRec.join(", ");
-        }
     </script>
 </body>
 </html>
-
